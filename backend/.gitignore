@@ -1,2 +1,6 @@
+*.db
+*.pyc
+__pycache__/
+instance/
 bamideleisrael1-d2dc9ca1b020.json
 .env
