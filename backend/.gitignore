@@ -1,9 +1,18 @@
-*.db
+# Bytecode and cache files
 *.pyc
+*.pyo
 __pycache__/
-instance/
-bamideleisrael1-d2dc9ca1b020.json
+
+# Virtual environment
+venv/
+
+# macOS system files
+.DS_Store
+
+# Sensitive files
 .env
+bamideleisrael1-d2dc9ca1b020.json
+instance/
 
-
-
+# Database files
+*.db
