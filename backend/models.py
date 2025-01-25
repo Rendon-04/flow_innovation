@@ -1,5 +1,6 @@
 from extensions import db
 from datetime import datetime
+from flask import current_app
 
 class Claim(db.Model):
     __tablename__ = 'claims'  # Explicitly name the table (optional but good practice)
@@ -12,6 +13,6 @@ class Claim(db.Model):
         return f"<Claim(id={self.id}, claim_text='{self.claim_text}', timestamp={self.timestamp})>"
 
 # Initialize the database schema
-def initialize_database():
-    with db.engine.connect() as connection:
-        db.create_all()
+def initialize_database(app):
+    with app.app_context():  # Ensure the app context is available
+        db.create_all()  # This will create the tables if they do not exist
