@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 import requests
 from extensions import db
 from models import Claim
+from services.news_service import NewsService
 import logging
 
 # Blueprint for routes
@@ -10,11 +11,12 @@ fact_checker = Blueprint("fact_checker", __name__)
 # Set up logging to capture API issues more effectively
 logging.basicConfig(level=logging.DEBUG)
 
+# Route for home page
 @fact_checker.route("/")
 def home():
     return jsonify({"message": "Welcome to the Fact-Checking API!"}), 200
 
-
+# Route for checking claims
 @fact_checker.route("/check_claim", methods=["GET", "POST"])
 def check_claim():
     """
@@ -66,3 +68,14 @@ def check_claim():
         # Catch any other request exceptions, e.g., connection errors
         logging.error(f"Request exception: {str(e)}")
         return jsonify({"error": f"An error occurred while connecting to the API: {str(e)}"}), 500
+
+# Route to get innovation news
+@fact_checker.route("/innovation_news", methods=["GET"])
+def innovation_news():
+    query = request.args.get("query", "innovation")  # Default to 'innovation' if no query is provided
+    news_service = NewsService()  # Initialize the service with the API key from config
+    articles = news_service.get_innovation_articles(query=query)
+
+    if "error" in articles:
+        return jsonify({"error": articles["error"]}), 500  # Return error if something goes wrong
+    return jsonify({"articles": articles}), 200
