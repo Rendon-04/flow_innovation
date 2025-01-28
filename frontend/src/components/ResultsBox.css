@@ -1,0 +1,46 @@
+/* ResultsBox.css */
+.results-box {
+    background-color: #1e1e30;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    color: #ffffff;
+    margin: 0 auto;
+    max-width: 800px;
+    text-align: left;
+  }
+  
+  .results-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #6d4caf;
+  }
+  
+  .result-item {
+    margin-bottom: 1.5rem;
+  }
+  
+  .claim-text {
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  
+  .claim-review {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+  }
+  
+  .fact-source {
+    color: #6d4caf;
+    text-decoration: none;
+  }
+  
+  .fact-source:hover {
+    text-decoration: underline;
+  }
+  
+  .no-results {
+    color: #e53935;
+    text-align: center;
+  }
+  

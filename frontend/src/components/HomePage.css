@@ -1,0 +1,25 @@
+/* HomePage.css */
+.home-container {
+
+    background-color: #121212;
+    color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .home-title {
+    font-size: 2.5rem;
+    color: #888a88;;
+    margin-bottom: 1rem;
+  }
+  
+  .home-description {
+    font-size: 1.2rem;
+    color: #cccccc;
+    max-width: 800px;
+    line-height: 1.6;
+  }

@@ -1,0 +1,27 @@
+/* InnovationNewsPage.css */
+.innovation-news-container {
+    padding: 2rem;
+    background-color: #121212;
+    color: #ffffff;
+    min-height: 100vh;
+  }
+  
+  .page-title {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: #6d4caf;
+  }
+  
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .loading,
+  .error {
+    text-align: center;
+    color: #e53935;
+  }
+  
