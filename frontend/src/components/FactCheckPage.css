@@ -1,0 +1,27 @@
+/* FactCheckPage.css */
+.fact-check-container {
+    padding: 2rem;
+    background-color: #121212;
+    color: #ffffff;
+    min-height: 100vh;
+    text-align: center;
+  }
+  
+  .page-title-fact-check {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: #6d4caf;
+  }
+  
+  .description {
+    margin-bottom: 2rem;
+    font-size: 1.2rem;
+    color: #cccccc;
+  }
+  
+  .loading,
+  .error {
+    color: #e53935;
+    margin-top: 1rem;
+  }
+  
