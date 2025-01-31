@@ -13,7 +13,7 @@
   .results-title {
     font-size: 1.5rem;
     margin-bottom: 1rem;
-    color: #6d4caf;
+    color: #d6d6d6;
   }
   
   .result-item {
@@ -23,6 +23,7 @@
   .claim-text {
     font-size: 1.2rem;
     font-weight: bold;
+    color: #eeeeee;
   }
   
   .claim-review {
@@ -44,3 +45,17 @@
     text-align: center;
   }
   
+a {
+  display: inline-block;
+  margin-top: 8px;
+  color: #b753d2;  
+  font-weight: bold;
+  text-decoration: none; 
+  transition: color 0.3s ease-in-out;
+}
+
+/* Hover effect */
+a:hover {
+  color: #9b72d1;  
+  text-decoration: underline;
+}

@@ -1,27 +1,85 @@
-/* FactCheckPage.css */
 .fact-check-container {
-    padding: 2rem;
-    background-color: #121212;
-    color: #ffffff;
-    min-height: 100vh;
-    text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  background-color: #121212;
+  color: #ffffff;
+  min-height: 100vh;
+  text-align: center;
+}
+
+.page-title-fact-check {
+  font-size: 48px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #eeeeee;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.description {
+  margin-bottom: 30px;
+  font-size: 18px;
+  color: #eeeeee;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+.loading,
+.error {
+  font-size: 18px;
+  margin-top: 20px;
+  padding: 10px 15px;
+  border-radius: 5px;
+}
+
+.loading {
+  background-color: rgba(109, 76, 175, 0.2);
+  color: #6d4caf;
+  font-weight: bold;
+}
+
+.error {
+  background-color: rgba(255, 0, 0, 0.2);
+  color: #ff4444;
+  font-weight: bold;
+}
+
+.results-container {
+  width: 100%;
+  max-width: 700px;
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.results-container {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
-  
-  .page-title-fact-check {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-    color: #6d4caf;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  .description {
-    margin-bottom: 2rem;
-    font-size: 1.2rem;
-    color: #cccccc;
-  }
-  
-  .loading,
-  .error {
-    color: #e53935;
-    margin-top: 1rem;
-  }
-  
+}
+
+.results-link {
+  color: #6d4caf;  
+  font-weight: bold;
+  text-decoration: none;  
+  transition: color 0.3s ease-in-out;
+}
+
+.results-link:hover {
+  color: #9b72d1; 
+  text-decoration: underline;
+}

@@ -1,32 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import ResultsBox from './ResultsBox';
 import './FactCheckPage.css';
 
 const FactCheckPage = () => {
-  const [query, setQuery] = useState('');
-  const [result, setResult] = useState(null);
+  console.log("FactCheckPage is rendering...");
+
+  const [results, setResults] = useState([]); 
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    console.log("Updated results state:", results);
+  }, [results]); 
+
   const handleSearch = (searchQuery) => {
-    setQuery(searchQuery);
+    console.log("Search Triggered:", searchQuery);
     setLoading(true);
     setError(null);
 
-    fetch(`/check_claim?query=${encodeURIComponent(searchQuery)}`)
+    fetch(`http://localhost:5001/check_claim?query=${encodeURIComponent(searchQuery)}`)
       .then(response => response.json())
       .then(data => {
-        if (data.error) {
-          setError(data.error);
-          setResult(null);
+        console.log("Fact Check API Response:", data);
+        if (data.claims && data.claims.length > 0) {
+          setResults([...data.claims]);  
         } else {
-          setResult(data);
+          setResults([]);
+          setError("No fact-checks found for this query.");
         }
         setLoading(false);
       })
       .catch(err => {
-        setError('Error fetching fact check results');
+        setError("Error fetching fact check results");
         setLoading(false);
       });
   };
@@ -38,9 +44,16 @@ const FactCheckPage = () => {
       <SearchBar onSearch={handleSearch} />
       {loading && <p className="loading">Checking...</p>}
       {error && <p className="error">{error}</p>}
-      {result && <ResultsBox result={result} />}
+      {results.length > 0 && (
+        <div className="results-container">
+          {results.map((result, index) => (
+            <ResultsBox key={index} result={result} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
 export default FactCheckPage;
+

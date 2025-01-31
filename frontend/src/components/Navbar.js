@@ -1,21 +1,30 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Navbar.css';
+import logo from "../img/FlowInnovationNews.png"; 
 
 const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/" className="navbar-logo">Flow Innovation</Link>
+        <Link to="/" className="navbar-logo">
+          <img src={logo} alt="Flow Innovation Logo" className="navbar-logo-img" />
+        </Link>
         <ul className="navbar-links">
           <li className="navbar-item">
-            <Link to="/" className="navbar-link">Home</Link>
+            <Link to="/">
+              <button className="navbar-button">Home</button>
+            </Link>
           </li>
           <li className="navbar-item">
-            <Link to="/fact-check" className="navbar-link">Fact Check</Link>
+            <Link to="/fact-check">
+              <button className="navbar-button">Fact Check</button>
+            </Link>
           </li>
           <li className="navbar-item">
-            <Link to="/innovation-news" className="navbar-link">Innovation News</Link>
+            <Link to="/innovation-news">
+              <button className="navbar-button">Innovation News</button>
+            </Link>
           </li>
         </ul>
       </div>
@@ -24,3 +33,5 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+

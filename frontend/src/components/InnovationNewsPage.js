@@ -3,14 +3,17 @@ import NewsCard from './NewsCard';
 import './InnovationNewsPage.css';
 
 const InnovationNewsPage = () => {
+  const BACKEND_URL = "http://localhost:5001"; 
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
 
   useEffect(() => {
-    fetch('/innovation_news')
+    fetch(`${BACKEND_URL}/innovation_news`)
       .then(response => response.json())
       .then(data => {
+        console.log("Innovation News API Response:", data); 
         if (data.articles) {
           setArticles(data.articles);
         } else {
