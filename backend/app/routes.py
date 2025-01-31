@@ -65,6 +65,16 @@ def innovation_news():
         return jsonify({"error": articles["error"]}), 500
     return jsonify({"articles": articles}), 200
 
+# New Route for Coming Soon Features
+@fact_checker.route("/coming_soon", methods=["GET"])
+def coming_soon():
+    upcoming_features = [
+        {"feature": "User Profile Management", "status": "In Development"},
+        {"feature": "Achievements Leaderboard", "status": "Planned"},
+        {"feature": "Real-Time Notifications", "status": "In Planning"}
+    ]
+    return jsonify({"coming_soon": upcoming_features}), 200
+
 # Auth Blueprint for user authentication routes
 auth_bp = Blueprint('auth', __name__)
 
