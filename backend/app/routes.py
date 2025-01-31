@@ -1,3 +1,4 @@
+import json
 import logging
 import numpy as np
 import pandas as pd
@@ -14,10 +15,61 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import KMeans
 
 
-
-# Blueprint for fact-checking, progress
+# Blueprint for fact-checking, progress, wolfram
 fact_checker = Blueprint("fact_checker", __name__)
 progress_bp = Blueprint('progress', __name__)
+wolfram_bp = Blueprint('wolfram', __name__)
+
+@wolfram_bp.route("/wolfram/progress_insights", methods=["POST"])
+def wolfram_progress_insights():
+    """ Sends user progress data to Wolfram for analysis. """
+    data = request.get_json()
+
+    if not data.get("user_id"):
+        return jsonify({"error": "User ID is required"}), 400
+    
+    user_id = data["user_id"]
+    
+    # Retrieve user progress and goals from the database
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Collect progress timestamps and achievements
+    progress = Progress.query.filter_by(user_id=user_id).all()
+    timestamps = [p.created_at.isoformat() for p in progress]  # Ensure timestamps are formatted
+    achievements = [p.achievement for p in progress]
+
+    # Collect user goals
+    goals = Goal.query.filter_by(user_id=user_id).all()
+    goal_texts = [g.goal for g in goals]
+    
+    # Send relevant data to Wolfram API
+    WOLFRAM_API_URL = current_app.config.get("WOLFRAM_API_URL")
+    
+    try:
+        response = requests.post(WOLFRAM_API_URL, json={
+            "timestamps": timestamps,
+            "achievements": achievements,
+            "goals": goal_texts
+        })
+
+        wolfram_result = response.json()
+
+        # Return the results to the client
+        return jsonify({
+            "message": "Wolfram Analysis Complete",
+            "next_milestone": wolfram_result.get("NextMilestoneDate"),
+            "innovation_score": wolfram_result.get("InnovationScore"),
+            "recommended_goals": wolfram_result.get("RecommendedGoals"),
+            "progress_graph": wolfram_result.get("ProgressGraph"),
+            "future_insights": wolfram_result.get("FutureInsights"),
+            "suggestions": wolfram_result.get("Suggestions")
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # Set up logging to capture API issues more effectively
 logging.basicConfig(level=logging.DEBUG)
@@ -229,39 +281,48 @@ def get_progress(user_id):
         "prediction": prediction
     }), 200
 
-
-# Function for AI recommendations
+# This function fetches goal recommendations for a user by sending all available goals
+# to the Wolfram API for clustering analysis. If there are fewer than 3 goals, no
+# recommendations are made. It returns a list of recommended goals based on Wolfram's analysis.
 def get_goal_recommendations(user_id):
+    """
+    Fetches goal recommendations for a user by leveraging the Wolfram API for clustering.
+
+    Parameters:
+        user_id (int): The ID of the user requesting recommendations.
+
+    Returns:
+        list: A list of recommended goal clusters if available, otherwise an empty list.
+    """
+
+    # Retrieve the user from the database
     user = User.query.get(user_id)
     if not user:
-        return []
+        return []  # Return an empty list if the user doesn't exist
 
-    # Fetch past goals from all users
+    # Fetch all goals from the database
     all_goals = [g.goal for g in Goal.query.all()]
-    
-    if len(all_goals) < 3:  # Not enough data to cluster
+
+    # Ensure there are enough goals to perform clustering (Wolfram's FindClusters requires at least 3)
+    if len(all_goals) < 3:
         return []
 
-    # Convert text goals into numerical vectors
-    vectorizer = TfidfVectorizer()
-    goal_vectors = vectorizer.fit_transform(all_goals)
+    # Get the Wolfram API URL from the app configuration
+    WOLFRAM_API_URL = current_app.config.get("WOLFRAM_API_URL")
 
-    # Cluster goals using K-Means
-    kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
-    kmeans.fit(goal_vectors)
+    try:
+        # Send a request to the Wolfram API with the list of goals
+        response = requests.post(WOLFRAM_API_URL, json={"goals": all_goals})
 
-    # Get cluster of current user's last goal
-    user_last_goal = Goal.query.filter_by(user_id=user_id).order_by(Goal.created_at.desc()).first()
-    if not user_last_goal:
+        # Parse the response as JSON
+        wolfram_result = response.json()
+
+        # Extract and return the recommended goal clusters from the response
+        return wolfram_result.get("recommended_goals", [])
+
+    except Exception as e:
+        # Return an empty list if an error occurs (e.g., API failure, network issues)
         return []
-
-    user_goal_vector = vectorizer.transform([user_last_goal.goal])
-    cluster_label = kmeans.predict(user_goal_vector)[0]
-
-    # Recommend other goals from the same cluster
-    recommended_goals = [all_goals[i] for i in range(len(all_goals)) if kmeans.labels_[i] == cluster_label]
-    
-    return recommended_goals[:3]  # Return top 3 recommendations
 
 
 # Route to create a goal for the user and show AI recommendations
@@ -311,3 +372,4 @@ def register_blueprints(app):
     app.register_blueprint(fact_checker)  # Register the fact-checker blueprint
     app.register_blueprint(auth_bp)       # Register the auth blueprint
     app.register_blueprint(progress_bp)  # Register the progress blueprint
+    app.register_blueprint(wolfram_bp)  # Register the wolfram blueprint

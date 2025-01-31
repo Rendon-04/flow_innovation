@@ -25,3 +25,6 @@ def create_app():
     register_blueprints(app)  # This already registers the progress blueprint as well
 
     return app
+
+# Create the WSGI application instance
+app = create_app()
