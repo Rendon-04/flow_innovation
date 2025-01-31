@@ -7,7 +7,6 @@ load_dotenv()
 # Base directory for the app
 BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))  # Points to 'backend' directory
 
-
 class Config:
     # Flask Configurations
     SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key")  # Default to a fallback key
@@ -22,9 +21,12 @@ class Config:
     # API Configurations
     FACT_CHECK_API_KEY = os.getenv("FACT_CHECK_API_KEY")
     NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+    WOLFRAM_API_URL = os.getenv("WOLFRAM_API_URL")  # <-- Add this line
 
     # Fail-Safes for Missing Environment Variables
     if not FACT_CHECK_API_KEY:
         raise RuntimeError("FACT_CHECK_API_KEY is not set in the environment variables")
     if not NEWS_API_KEY:
         raise RuntimeError("NEWS_API_KEY is not set in the environment variables")
+    if not WOLFRAM_API_URL:
+        raise RuntimeError("WOLFRAM_API_URL is not set in the environment variables")  # <-- Add this line
