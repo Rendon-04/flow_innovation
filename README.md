@@ -37,7 +37,7 @@ Flow Innovation was created to combat these issues by:
 - Using AI-powered fact-checking to verify claims and provide users with credible information quickly.
 - Highlighting new inventions and scientific breakthroughs to inspire curiosity and progress.
 
-Our goal is to promote truth, innovation, and progress—ensuring that people have access to accurate information and a renewed belief in humanity’s forward momentum.
+Our goal is **to promote truth, innovation, and progress**—ensuring that people have access to accurate information and a renewed belief in humanity’s forward momentum.
 
 ## Features
 
@@ -124,6 +124,3 @@ Explore the innovative features and technologies behind the app by checking out 
 ## Future Enhancements
 - Integration of AI/ML for advanced fact-checking capabilities.
 - User accounts for personalized experiences and saved history.
-
-
-
