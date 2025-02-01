@@ -1,9 +1,23 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import './Navbar.css';
-import logo from "../img/FlowInnovationNews.png"; 
+import logo from "../img/FlowInnovationNews.png";
 
 const Navbar = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsLoggedIn(false);
+    navigate('/');
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-container">
@@ -26,6 +40,29 @@ const Navbar = () => {
               <button className="navbar-button">Innovation News</button>
             </Link>
           </li>
+          <li className="navbar-item">
+            <Link to="/progress-tracking">
+              <button className="navbar-button">Progress Tracking</button>
+            </Link>
+          </li>
+          {!isLoggedIn ? (
+            <>
+              <li className="navbar-item">
+                <Link to="/register">
+                  <button className="navbar-button">Register</button>
+                </Link>
+              </li>
+              <li className="navbar-item">
+                <Link to="/login">
+                  <button className="navbar-button">Login</button>
+                </Link>
+              </li>
+            </>
+          ) : (
+            <li className="navbar-item">
+              <button className="navbar-button" onClick={handleLogout}>Logout</button>
+            </li>
+          )}
         </ul>
       </div>
     </nav>
@@ -33,5 +70,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
-

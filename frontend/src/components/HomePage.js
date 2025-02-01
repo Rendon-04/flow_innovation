@@ -15,6 +15,10 @@ const HomePage = () => {
         <Link to="/innovation-news">
               <button className="homepage-button">News</button>
         </Link>
+        <p className="coming-soon-text">
+          <span>🚀 Coming Soon:</span> New features like User Profiles, Leaderboards, and Real-Time Notifications!
+          <Link to="/coming-soon" className="coming-soon-link"> Learn more.</Link>
+        </p>
       </div>
       <div className="image-container">
         <img src={homepageImage} alt="Flow Innovation" className="homepage-image" />
@@ -24,4 +28,3 @@ const HomePage = () => {
 }
 
 export default HomePage;
-

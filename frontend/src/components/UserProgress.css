@@ -1,0 +1,27 @@
+.progress-container {
+    background: #1c1c1c;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(255, 255, 255, 0.1);
+    text-align: center;
+    color: white;
+    margin: 20px auto;
+    max-width: 500px;
+  }
+  
+  .progress-title {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+  }
+  
+  .progress-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .progress-item {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+  }

@@ -1,0 +1,41 @@
+.goal-container {
+    background: #1c1c1c;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    color: white;
+    max-width: 400px;
+    margin: 20px auto;
+  }
+  
+  .goal-title {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+  }
+  
+  .goal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .goal-input {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background-color: #121212;
+    color: white;
+  }
+  
+  .goal-button {
+    background-color: #6a0dad;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .goal-button:hover {
+    background-color: #580a9e;
+  }

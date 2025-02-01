@@ -83,4 +83,19 @@ body {
   width: 9em;
  }
 
-  
+ .coming-soon-text {
+  margin-top: 20px;
+  font-size: 1rem;
+  color: #414141;
+}
+
+.coming-soon-link {
+  color: #8b0fd8;
+  font-weight: bold;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+.coming-soon-link:hover {
+  text-decoration: underline;
+}

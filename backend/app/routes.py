@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import spacy
 import requests
+import sys
 from app.models import Claim, Goal, Progress, User
 from app.services.news_service import NewsService
 from extensions import db
@@ -337,6 +338,10 @@ def create_goal():
 
     if not goal or not target_date:
         return jsonify({"error": "Goal and target_date are required"}), 400
+    try:
+        pd.to_datetime(target_date)  # Validate date format
+    except Exception:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
 
     new_goal = Goal(user_id=user_id, goal=goal, target_date=target_date)
     db.session.add(new_goal)
@@ -349,22 +354,6 @@ def create_goal():
         "message": "Goal created successfully!",
         "recommended_goals": recommendations
     }), 200
-
-
-# Route to retrieve user's goals
-@progress_bp.route('/goals', methods=['GET'])
-@jwt_required()
-def get_goals():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    goals = Goal.query.filter_by(user_id=user_id).all()
-    goals_data = [{"id": goal.id, "goal": goal.goal, "target_date": goal.target_date, "created_at": goal.created_at} for goal in goals]
-
-    return jsonify({"user_id": user_id, "goals": goals_data}), 200
 
 
 # Function to register all blueprints
