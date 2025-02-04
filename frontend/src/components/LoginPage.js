@@ -21,7 +21,7 @@ const LoginPage = () => {
     const data = await response.json();
     if (response.ok) {
       localStorage.setItem('token', data.access_token);
-      navigate('/user-progress');
+      navigate('/progress-tracking');
     } else {
       setError(data.error || 'Login failed');
     }

@@ -1,35 +1,37 @@
+import os
 import json
 import logging
-import numpy as np
-import pandas as pd
-import spacy
 import requests
-import sys
-from app.models import Claim, Goal, Progress, User
-from app.services.news_service import NewsService
-from extensions import db
+import spacy
+from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LinearRegression
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.cluster import KMeans
+from extensions import db
+from app.models import Claim, Goal, Progress, User
+from app.services.news_service import NewsService
+from flask_cors import cross_origin
 
 
-# Blueprint for fact-checking, progress, wolfram
+# ✅ Define Blueprints
 fact_checker = Blueprint("fact_checker", __name__)
-progress_bp = Blueprint('progress', __name__)
-wolfram_bp = Blueprint('wolfram', __name__)
+auth_bp = Blueprint("auth", __name__)
+progress_bp = Blueprint("progress", __name__)
+wolfram_bp = Blueprint("wolfram", __name__)
 
-@wolfram_bp.route("/wolfram/progress_insights", methods=["POST"])
+# ✅ Load NLP Model
+nlp = spacy.load("en_core_web_sm")
+
+# Define the Blueprint
+wolfram_bp = Blueprint("wolfram", __name__)
+
+@wolfram_bp.route("/wolfram/progress_insights", methods=["GET"])
+@jwt_required()  # Ensure the user is authenticated
 def wolfram_progress_insights():
-    """ Sends user progress data to Wolfram for analysis. """
-    data = request.get_json()
-
-    if not data.get("user_id"):
-        return jsonify({"error": "User ID is required"}), 400
+    """Sends user progress data to Wolfram for analysis."""
     
-    user_id = data["user_id"]
+    user_id = get_jwt_identity()  # Extract user ID from JWT token
     
     # Retrieve user progress and goals from the database
     user = User.query.get(user_id)
@@ -44,39 +46,57 @@ def wolfram_progress_insights():
     # Collect user goals
     goals = Goal.query.filter_by(user_id=user_id).all()
     goal_texts = [g.goal for g in goals]
-    
-    # Send relevant data to Wolfram API
-    WOLFRAM_API_URL = current_app.config.get("WOLFRAM_API_URL")
-    
+
+    # ✅ Get API URL and APPID
+    WOLFRAM_API_URL = current_app.config.get("WOLFRAM_API_URL", "").strip()
+    WOLFRAM_APPID = current_app.config.get("WOLFRAM_APPID", "").strip()
+
+    if not WOLFRAM_APPID:
+        return jsonify({"error": "Wolfram API AppID is missing"}), 500
+
+    # ✅ Convert user data into a query-friendly format
+    query_text = f"Analyze progress: timestamps={timestamps}, achievements={achievements}, goals={goal_texts}"
+
+    # ✅ Prepare the GET request with `input` parameter
+    url = f"{WOLFRAM_API_URL}?appid={WOLFRAM_APPID}&input={query_text}&output=json"
+
+    logging.info(f"🚀 Sending request to Wolfram API: {url}")
+
     try:
-        response = requests.post(WOLFRAM_API_URL, json={
-            "timestamps": timestamps,
-            "achievements": achievements,
-            "goals": goal_texts
-        })
+        response = requests.get(url)
 
-        wolfram_result = response.json()
+        logging.info(f"🌍 Wolfram API Response Status: {response.status_code}")
 
-        # Return the results to the client
+        if response.status_code != 200:
+            logging.error(f"❌ Wolfram API Error {response.status_code}: {response.text}")
+            return jsonify({"error": f"Wolfram API Error: {response.status_code}"}), response.status_code
+
+        # ✅ Ensure the response is JSON
+        try:
+            wolfram_result = response.json()
+        except requests.exceptions.JSONDecodeError:
+            logging.error(f"❌ Wolfram API Response was not JSON. Raw response: {response.text}")
+            return jsonify({"error": "Invalid response from Wolfram API", "raw_response": response.text}), 500
+
+        # ✅ Extract and return relevant results
         return jsonify({
             "message": "Wolfram Analysis Complete",
-            "next_milestone": wolfram_result.get("NextMilestoneDate"),
-            "innovation_score": wolfram_result.get("InnovationScore"),
-            "recommended_goals": wolfram_result.get("RecommendedGoals"),
-            "progress_graph": wolfram_result.get("ProgressGraph"),
-            "future_insights": wolfram_result.get("FutureInsights"),
-            "suggestions": wolfram_result.get("Suggestions")
+            "next_milestone": wolfram_result.get("NextMilestoneDate", "N/A"),
+            "innovation_score": wolfram_result.get("InnovationScore", "N/A"),
+            "recommended_goals": wolfram_result.get("RecommendedGoals", []),
+            "progress_graph": wolfram_result.get("ProgressGraph", ""),
+            "future_insights": wolfram_result.get("FutureInsights", []),
+            "suggestions": wolfram_result.get("Suggestions", [])
         }), 200
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except requests.exceptions.RequestException as e:
+        logging.error(f"❌ Wolfram API Request Failed: {str(e)}")
+        return jsonify({"error": f"Error fetching data: {str(e)}"}), 500
+
 
 
 # Set up logging to capture API issues more effectively
 logging.basicConfig(level=logging.DEBUG)
-
-# Load spaCy model
-nlp = spacy.load("en_core_web_sm")
 
 # Helper function to clean and preprocess text
 def preprocess_text(text):
@@ -89,61 +109,87 @@ def home():
     return jsonify({"message": "Welcome to the Fact-Checking API!"}), 200
 
 
-# Route for checking claims (GET and POST)
 @fact_checker.route("/check_claim", methods=["GET", "POST"])
 def check_claim():
     FACT_CHECK_API_KEY = current_app.config["FACT_CHECK_API_KEY"]
-    logging.debug(f"API Key used: {FACT_CHECK_API_KEY}")
-
-    # Extract query based on request method
-    if request.method == "GET":
-        query = request.args.get("query", "").strip()
-        if not query:
-            return jsonify({"error": "No query provided. Use ?query=<your_query>"}), 400
-    elif request.method == "POST":
-        data = request.json
-        if not data or not data.get("claim"):
-            return jsonify({"error": "Invalid or missing JSON payload. Provide a 'claim' field."}), 400
-        query = data["claim"].strip()
-
-    query_cleaned = preprocess_text(query)
-
-    # Retrieve past claims
-    past_claims = Claim.query.all()
-    past_texts = [preprocess_text(c.claim_text) for c in past_claims]
-
-    if past_texts:
-        vectorizer = TfidfVectorizer()
-        tfidf_matrix = vectorizer.fit_transform(past_texts + [query_cleaned])
-        
-        similarities = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
-        max_similarity = max(similarities[0]) if similarities[0].size > 0 else 0
-
-        if max_similarity > 0.7:  # High similarity threshold
-            similar_claim = past_claims[similarities[0].argmax()]
-            return jsonify({"cached_result": similar_claim.result}), 200
-
-    # If no match, call Google API
-    url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query={query_cleaned}&key={FACT_CHECK_API_KEY}"
-
+    
     try:
+        logging.debug("🟢 Received request to /check_claim")
+
+        # Extract query
+        if request.method == "GET":
+            query = request.args.get("query", "").strip()
+            if not query:
+                logging.error("🔴 No query provided in GET request")
+                return jsonify({"error": "No query provided."}), 400
+        elif request.method == "POST":
+            data = request.get_json()
+            if not data or not data.get("claim"):
+                logging.error("🔴 Invalid or missing JSON payload in POST request")
+                return jsonify({"error": "Invalid JSON payload. Provide a 'claim' field."}), 400
+            query = data["claim"].strip()
+
+        logging.debug(f"🔍 Processing query: {query}")
+
+        # Check for cached claims
+        past_claims = Claim.query.all()
+        past_texts = [c.claim_text for c in past_claims]
+
+        if past_texts:
+            vectorizer = TfidfVectorizer()
+            tfidf_matrix = vectorizer.fit_transform(past_texts + [query])
+            similarities = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
+            max_similarity = max(similarities[0]) if similarities[0].size > 0 else 0
+
+            if max_similarity > 0.7:
+                similar_claim = past_claims[similarities[0].argmax()]
+                
+                # ✅ Ensure JSON is properly formatted
+                try:
+                    cached_result = json.loads(similar_claim.result)
+                except json.JSONDecodeError as e:
+                    logging.error(f"⚠️ JSON Decode Error in Cached Result: {str(e)}")
+                    return jsonify({"error": "Cached result contains invalid JSON."}), 500
+
+                
+                logging.info(f"✅ Returning cached result for query: {query}")
+                return jsonify({"cached_result": cached_result}), 200
+
+        # Fetch new data from Google API
+        url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query={query}&key={FACT_CHECK_API_KEY}"
+        logging.debug(f"🌍 Sending request to Google API: {url}")
+
         response = requests.get(url)
-        response.raise_for_status()  # Raise error for non-200 responses
+        
+        if response.status_code != 200:
+            logging.error(f"🔴 Google API Error {response.status_code}: {response.text}")
+            return jsonify({"error": f"Google API Error: {response.status_code}"}), response.status_code
 
         results = response.json()
-        new_claim = Claim(claim_text=query_cleaned, result=str(results))
-        db.session.add(new_claim)
-        db.session.commit()
+        logging.debug(f"📝 Google API Response: {json.dumps(results, indent=2)}")
 
-        return jsonify(results), 200
+        # ✅ Store result in database with valid JSON format
+        try:
+            formatted_json = json.dumps(results, ensure_ascii=False)
+            json.loads(formatted_json)  # Validate JSON before storing
+            new_claim = Claim(claim_text=query, result=formatted_json)
+            db.session.add(new_claim)
+            db.session.commit()
+        except json.JSONDecodeError as e:
+            logging.error(f"🔴 JSON Encoding Error: {str(e)}")
+            return jsonify({"error": "Failed to store result due to JSON formatting issue."}), 500
 
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Request Exception: {str(e)}")
-        return jsonify({"error": f"An error occurred while connecting to the API: {str(e)}"}), 500
 
+    except json.JSONDecodeError as e:
+        logging.error(f"🔴 JSON Decode Error: {str(e)}")
+        return jsonify({"error": f"JSON Decode Error: {str(e)}"}), 500
+    except requests.RequestException as e:
+        logging.error(f"🔴 Request Exception: {str(e)}")
+        return jsonify({"error": f"Error fetching data: {str(e)}"}), 500
     except Exception as e:
-        logging.error(f"Unexpected error: {str(e)}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
+        logging.error(f"🔴 Unexpected server error: {str(e)}", exc_info=True)
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
 
 
 # Route to get innovation news
@@ -202,7 +248,8 @@ def login():
     if not user or not user.check_password(password):
         return jsonify({"error": "Invalid username or password"}), 401
 
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))  # 🔥 Ensure it's a string
+
     return jsonify({"message": "Login successful", "access_token": access_token}), 200
 
 
@@ -262,16 +309,20 @@ def predict_goal_completion(user_id):
     return f"At your current pace, you'll complete your next milestone by {pd.to_datetime(predicted_time[0], unit='s')}."
 
 
-# Route to retrieve user progress
-@progress_bp.route('/progress/<int:user_id>', methods=['GET'])
+
+@progress_bp.route('/progress/user/<int:user_id>', methods=['GET'])
 @jwt_required()
-def get_progress(user_id):
+def get_user_progress(user_id):
+    """Fetch progress for a specific user (admin use case)."""
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
 
     progress = Progress.query.filter_by(user_id=user_id).all()
-    progress_data = [{"id": p.id, "achievement": p.achievement, "created_at": p.created_at} for p in progress]
+    progress_data = [
+        {"id": p.id, "achievement": p.achievement, "created_at": p.created_at.isoformat()}
+        for p in progress
+    ]
 
     # Get AI-based progress prediction
     prediction = predict_goal_completion(user_id)
@@ -282,78 +333,126 @@ def get_progress(user_id):
         "prediction": prediction
     }), 200
 
-# This function fetches goal recommendations for a user by sending all available goals
-# to the Wolfram API for clustering analysis. If there are fewer than 3 goals, no
-# recommendations are made. It returns a list of recommended goals based on Wolfram's analysis.
+@progress_bp.route('/progress', methods=['GET'])
+@jwt_required()
+def get_progress():
+    """Fetch all progress for the logged-in user."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    progress = Progress.query.filter_by(user_id=user_id).all()
+    progress_data = [
+        {"id": p.id, "achievement": p.achievement, "created_at": p.created_at.isoformat()}
+        for p in progress
+    ]
+
+    return jsonify({"progress": progress_data}), 200
+
+
 def get_goal_recommendations(user_id):
     """
     Fetches goal recommendations for a user by leveraging the Wolfram API for clustering.
-
-    Parameters:
-        user_id (int): The ID of the user requesting recommendations.
-
-    Returns:
-        list: A list of recommended goal clusters if available, otherwise an empty list.
     """
-
-    # Retrieve the user from the database
     user = User.query.get(user_id)
     if not user:
-        return []  # Return an empty list if the user doesn't exist
-
-    # Fetch all goals from the database
-    all_goals = [g.goal for g in Goal.query.all()]
-
-    # Ensure there are enough goals to perform clustering (Wolfram's FindClusters requires at least 3)
-    if len(all_goals) < 3:
+        logging.warning(f"⚠️ User {user_id} not found.")
         return []
 
-    # Get the Wolfram API URL from the app configuration
+    all_goals = [g.goal for g in Goal.query.all()]
+
+    if len(all_goals) < 3:
+        logging.warning("⚠️ Not enough goals available for clustering. Need at least 3.")
+        return []
+
     WOLFRAM_API_URL = current_app.config.get("WOLFRAM_API_URL")
 
     try:
-        # Send a request to the Wolfram API with the list of goals
         response = requests.post(WOLFRAM_API_URL, json={"goals": all_goals})
-
-        # Parse the response as JSON
         wolfram_result = response.json()
 
-        # Extract and return the recommended goal clusters from the response
+        logging.debug(f"🔍 AI Goal Recommendations Response: {json.dumps(wolfram_result, indent=2)}")
+
         return wolfram_result.get("recommended_goals", [])
 
     except Exception as e:
-        # Return an empty list if an error occurs (e.g., API failure, network issues)
+        logging.error(f"🔴 AI Recommendation Error: {str(e)}")
         return []
 
 
-# Route to create a goal for the user and show AI recommendations
+
 @progress_bp.route('/goal', methods=['POST'])
 @jwt_required()
 def create_goal():
-    # We get the user_id from the JWT identity
+    """Handles goal creation with AI recommendations."""
     user_id = get_jwt_identity()
     data = request.get_json()
+
+    logging.info(f"🚀 Received Goal Creation Request: {data}")
+
+    # Validate data
     goal = data.get('goal')
     target_date = data.get('target_date')
 
     if not goal or not target_date:
         return jsonify({"error": "Goal and target_date are required"}), 400
+
+    # Convert `target_date` from string to datetime
     try:
-        pd.to_datetime(target_date)  # Validate date format
-    except Exception:
+        target_date = datetime.strptime(target_date, "%Y-%m-%d")
+    except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
 
     new_goal = Goal(user_id=user_id, goal=goal, target_date=target_date)
     db.session.add(new_goal)
     db.session.commit()
 
-    # Get AI-based recommendations
+    # 🔥 Fetch AI-based goal recommendations
     recommendations = get_goal_recommendations(user_id)
+
+    logging.info(f"✅ Goal Saved! AI Recommendations: {recommendations}")
 
     return jsonify({
         "message": "Goal created successfully!",
         "recommended_goals": recommendations
     }), 200
+
+
+@progress_bp.route('/goals', methods=['GET'])
+@jwt_required()
+def get_goals():
+    """Fetch all goals for the logged-in user."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    goals = Goal.query.filter_by(user_id=user_id).all()
+    goals_data = [
+        {"id": goal.id, "goal": goal.goal, "target_date": goal.target_date.strftime("%Y-%m-%d"), "created_at": goal.created_at}
+        for goal in goals
+    ]
+
+    return jsonify({"goals": goals_data}), 200
+
+
+@progress_bp.route("/progress/community", methods=["GET"])
+def get_community_progress():
+    """Fetch progress for all users to display in the community progress tracker."""
+    all_progress = Progress.query.all()
+
+    if not all_progress:
+        return jsonify({"message": "No community progress found"}), 200
+
+    progress_data = [
+        {"id": p.id, "achievement": p.achievement, "user_id": p.user_id, "created_at": p.created_at.isoformat()}
+        for p in all_progress
+    ]
+
+    return jsonify({"progress": progress_data}), 200
 
 
 # Function to register all blueprints

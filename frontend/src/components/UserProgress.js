@@ -1,61 +1,97 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './UserProgress.css';
 
 const UserProgress = () => {
   const [progress, setProgress] = useState([]);
-  const [newAchievement, setNewAchievement] = useState('');
+  const [achievement, setAchievement] = useState('');
+  const [message, setMessage] = useState('');
+
+  const fetchProgress = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const response = await fetch("http://localhost:5001/progress", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setProgress(data.progress);  
+      } else {
+        setMessage(data.error || "⚠️ Failed to load progress.");
+      }
+    } catch (error) {
+      console.error("❌ Fetch Error:", error);
+      setMessage("⚠️ An error occurred while fetching progress.");
+    }
+  };
 
   useEffect(() => {
-    fetch("http://localhost:5001/progress", {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`
-      }
-    })
-    .then(response => response.json())
-    .then(data => setProgress(data.progress || []))
-    .catch(error => console.error("Error fetching progress:", error));
+    fetchProgress(); 
   }, []);
 
-  const handleSubmit = async (e) => {
+  const handleAddProgress = async (e) => {
     e.preventDefault();
-    if (!newAchievement) return;
-  
-    const response = await fetch("http://localhost:5001/progress", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("token")}`
-      },
-      body: JSON.stringify({ achievement: newAchievement })
-    });
-  
-    if (response.ok) {
+    setMessage("");
+
+    if (!achievement.trim()) {
+      setMessage("⚠️ Achievement cannot be empty.");
+      return;
+    }
+
+    const requestBody = { achievement: achievement.trim() };
+
+    try {
+      const response = await fetch("http://localhost:5001/progress", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
       const data = await response.json();
-      setProgress([...progress, data]); 
-      setNewAchievement(''); 
-    } else {
-      console.error("Error adding progress");
+      console.log("📥 Server response:", data);
+
+      if (response.ok) {
+        setMessage("✅ Progress added!");
+        setAchievement('');
+        fetchProgress();  
+      } else {
+        setMessage(data.error || "⚠️ Failed to add progress.");
+      }
+    } catch (error) {
+      console.error("❌ Fetch Error:", error);
+      setMessage("⚠️ An unexpected error occurred.");
     }
   };
 
   return (
     <div className="progress-container">
       <h2 className="progress-title">User Progress</h2>
-      <form onSubmit={handleSubmit} className="progress-form">
+      <form className="progress-form" onSubmit={handleAddProgress}>
         <input
           type="text"
-          value={newAchievement}
-          onChange={(e) => setNewAchievement(e.target.value)}
-          placeholder="Enter a new achievement"
           className="progress-input"
+          value={achievement}
+          onChange={(e) => setAchievement(e.target.value)}
+          placeholder="Enter a new achievement"
           required
         />
         <button type="submit" className="progress-button">Add Progress</button>
       </form>
+      {message && <p className="progress-message">{message}</p>}
+
+      <h3 className="progress-list-title">Your Achievements:</h3>
       <ul className="progress-list">
-        {progress.map((entry, index) => (
-          <li key={index} className="progress-item">{entry.achievement}</li>
+        {progress.map((p) => (
+          <li key={p.id} className="progress-item">
+            <strong>{p.achievement}</strong> - {new Date(p.created_at).toLocaleDateString()}
+          </li>
         ))}
       </ul>
     </div>
@@ -63,4 +99,3 @@ const UserProgress = () => {
 };
 
 export default UserProgress;
-
